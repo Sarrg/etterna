@@ -8,7 +8,8 @@ local ratios = {
     SliderColumnLeftGap = 196 / 1920, -- from left edge of text to left edge of sliders
     RightColumnLeftGap = 410 / 1920, -- from left edge of frame to left edge of text
     -- using the section height to give equidistant spacing between items with "less" work
-    UpperSectionHeight = 440 / 1080, -- from bottom of upperlip to top of upper divider
+    UpperSectionHeight = 360 / 1080, -- from bottom of upperlip to top of upper divider
+    MiddleSectionHeight = 120 / 1080, -- from bottom of upperlip to top of upper divider
     LowerSectionHeight = 485 / 1080, -- from bottom of upper divider to bottom of frame
 }
 
@@ -22,6 +23,7 @@ local actuals = {
     SliderColumnLeftGap = ratios.SliderColumnLeftGap * SCREEN_WIDTH,
     RightColumnLeftGap = ratios.RightColumnLeftGap * SCREEN_WIDTH,
     UpperSectionHeight = ratios.UpperSectionHeight * SCREEN_HEIGHT,
+    MiddleSectionHeight = ratios.MiddleSectionHeight * SCREEN_HEIGHT,
     LowerSectionHeight = ratios.LowerSectionHeight * SCREEN_HEIGHT,
 }
 
@@ -127,6 +129,7 @@ local function upperSection()
     -- current focused text entry field, 1 is "Any"
     -- based on entryTextTable
     local focusedField = 1
+    local selectedSortMode = 0
 
     -- text entry into a field causes the searchentry to be updated accordingly
     -- based on entryTextTable
@@ -448,6 +451,99 @@ local function upperSection()
 
     for i = 1, #entryTextTable do
         t[#t+1] = textEntryField(i)
+    end
+
+    return t
+end
+
+local function middleSection()
+    local function gcd(a, b)
+        return b==0 and a or gcd(b,a%b)
+    end
+
+    -- TODO get from WHEEL DATA
+    --local sortCategoryTable = WHEELDATA:GetAvailableSortModes()
+    local sortCategoryTable = {
+        "Song",
+        "Artist",
+        "Accuracy",
+        -- TODO -- "BPM", -- sort by BPM
+        "Overall MSD", -- sort by highest overall MSD
+        "Stream MSD", -- sort by highest stream MSD
+        "Jumpstream MSD", -- sort by highest jumpstream MSD
+        "Handstream MSD", -- sort by highest handstream MSD
+        "Stamina MSD", -- sort by highest stamina MSD
+        "Jackspeed MSD", -- sort by highest jack MSD
+        "Chordjack MSD", -- sort by highest chordjack MSD
+        "Technical MSD", -- sort by highest tech MSD
+        "Length", -- sort by length range
+    }
+
+    local ratio = actuals.MiddleSectionHeight / (actuals.Width - actuals.EdgePadding)
+    local rows = gcd(#sortCategoryTable, math.ceil(math.sqrt(#sortCategoryTable)))
+    local x_elems = #sortCategoryTable / rows
+    local function sortButtonField(i)
+        return Def.ActorFrame {
+            Name = "SortButtonFrame_"..i,
+            InitCommand = function(self)
+                local row = math.floor( (i-1) / x_elems)
+                local column = (i-1) % x_elems
+                self:xy(actuals.EdgePadding + (actuals.Width * column / x_elems), (actuals.MiddleSectionHeight / rows) * (row))
+            end,
+            UIElements.TextToolTip(1, 1, "Common Normal") .. {
+                Name = "SortButtonTitle",
+                InitCommand = function(self)
+                    self:halign(0)
+                    self:zoom(textSize)
+                    self:maxwidth((actuals.Width - actuals.EdgePadding)/ (rows * textSize) - textZoomFudge)
+                    self:settext(sortCategoryTable[i])
+                    self:GetParent():diffusealpha(buttonHoverAlpha)
+                    registerActorToColorConfigElement(self, "main", "PrimaryText")
+                    MESSAGEMAN:Broadcast("SortingChanged")
+                end,
+                MouseOverCommand = function(self)
+                    if self:IsInvisible() then return end
+                    self:GetParent():diffusealpha(1)
+                end,
+                MouseOutCommand = function(self)
+                    if self:IsInvisible() or selectedSortMode == i then return end
+                    self:GetParent():diffusealpha(buttonHoverAlpha)
+                end,
+                MouseDownCommand = function(self, params)
+                    if params.event == "DeviceButton_left mouse button" then
+                        selectedSortMode = i
+                        MESSAGEMAN:Broadcast("SortSelectionChanged")
+                    end
+                end,
+                SortSelectionChangedMessageCommand = function(self)
+                    if selectedSortMode == i then
+                        self:strokecolor(color("0.4,0.4,0.4,0.4"))
+                        self:GetParent():diffusealpha(1)
+                    else
+                        self:strokecolor(color("1,1,1,0"))
+                        self:GetParent():diffusealpha(buttonHoverAlpha)
+                    end
+                end,
+                SortingChangedMessageCommand = function(self)
+                    selectedSortMode, _ = WHEELDATA:rp_GetCurrentSortMode()
+                    MESSAGEMAN:Broadcast("SortSelectionChanged")
+                end,
+            },
+
+
+        }
+    end
+
+    
+    local t = Def.ActorFrame {
+        Name = "LowerSectionFrame",
+        InitCommand = function(self)
+            self:y(actuals.TopLipHeight + actuals.UpperSectionHeight + actuals.DividerThickness - 20)
+        end,
+    }
+
+    for i = 1, #sortCategoryTable do
+        t[#t+1] = sortButtonField(i)
     end
 
     return t
@@ -948,7 +1044,7 @@ local function lowerSection()
     local t = Def.ActorFrame {
         Name = "LowerSectionFrame",
         InitCommand = function(self)
-            self:y(actuals.TopLipHeight + actuals.UpperSectionHeight + actuals.DividerThickness)
+            self:y(actuals.TopLipHeight + actuals.UpperSectionHeight + actuals.MiddleSectionHeight + actuals.DividerThickness - 15)
         end,
     }
 
@@ -1075,8 +1171,37 @@ local function lowerSection()
             self:playcommand("UpdateText")
         end
     }
-
+        
+    toogle=false
     t[#t+1] = filterMiscLine(7) .. {
+        Name = "UnplayedOnlyLine",
+        InitCommand = function(self)
+            self:playcommand("UpdateText")
+        end,
+        UpdateTextCommand = function(self)
+            local txt = toogle and "ON" or "OFF"
+            self:settextf("Unplayed Only: %s", txt)
+        end,
+        MouseOverCommand = onHover,
+        MouseOutCommand = onUnHover,
+        MouseDownCommand = function(self)
+            toogle = not toogle
+            if toogle then
+                filterCategoryLimits[#filterCategoryLimits] = {0, 1}
+                setSSFilter(10, 0, 1)
+                --FILTERMAN:SetMaxFilterRate(3.0)
+                --FILTERMAN:SetMinFilterRate(0.5)
+            else
+                filterCategoryLimits[#filterCategoryLimits] = {85, 100}
+                setSSFilter(10, 0, 100) 
+                --FILTERMAN:SetMaxFilterRate(maxrate)
+                --FILTERMAN:SetMinFilterRate(minrate)
+            end
+            self:playcommand("UpdateText")
+        end
+    }
+
+    t[#t+1] = filterMiscLine(9) .. {
         Name = "ResetLine",
         InitCommand = function(self)
             self:settext("Reset")
@@ -1087,10 +1212,17 @@ local function lowerSection()
             FILTERMAN:ResetAllFilters()
             self:GetParent():playcommand("UpdateText")
             self:GetParent():playcommand("UpdateDots")
+            local scr = SCREENMAN:GetTopScreen()
+            local w = scr:GetChild("WheelFile")
+            if w ~= nil then
+                selectedSortMode, _ = WHEELDATA:rp_GetCurrentSortMode()
+                WHEELDATA:SetSearch(searchentry)
+                w:sleep(0.01):queuecommand("ApplyFilter")
+            end
         end
     }
 
-    t[#t+1] = filterMiscLine(8) .. {
+    t[#t+1] = filterMiscLine(10) .. {
         Name = "ApplyLine",
         InitCommand = function(self)
             self:settext("Apply")
@@ -1103,6 +1235,7 @@ local function lowerSection()
             local scr = SCREENMAN:GetTopScreen()
             local w = scr:GetChild("WheelFile")
             if w ~= nil then
+                WHEELDATA:rp_SetCurrentSortMode(selectedSortMode)
                 WHEELDATA:SetSearch(searchentry)
                 w:sleep(0.01):queuecommand("ApplyFilter")
             end
@@ -1140,13 +1273,13 @@ t[#t+1] = LoadFont("Common Normal") .. {
         self:xy(actuals.EdgePadding, actuals.TopLipHeight / 2)
         self:zoom(textSize)
         self:maxwidth(actuals.Width / textSize - textZoomFudge)
-        self:settext("Search and Filters")
+        self:settext("Search, Sort and Filters")
         registerActorToColorConfigElement(self, "main", "PrimaryText")
     end
 }
 
 t[#t+1] = Def.Quad {
-    Name = "Divider",
+    Name = "UpperMiddleDivider",
     InitCommand = function(self)
         self:halign(0):valign(0)
         self:xy(actuals.EdgePadding, actuals.UpperSectionHeight)
@@ -1155,7 +1288,18 @@ t[#t+1] = Def.Quad {
     end
 }
 
+t[#t+1] = Def.Quad {
+    Name = "MiddleLowerDivider",
+    InitCommand = function(self)
+        self:halign(0):valign(0)
+        self:xy(actuals.EdgePadding, actuals.UpperSectionHeight + actuals.DividerThickness + actuals.MiddleSectionHeight)
+        self:zoomto(actuals.Width - actuals.EdgePadding * 2, actuals.DividerThickness)
+        registerActorToColorConfigElement(self, "main", "SeparationDivider")
+    end
+}
+
 t[#t+1] = upperSection()
+t[#t+1] = middleSection()
 t[#t+1] = lowerSection()
 
 return t

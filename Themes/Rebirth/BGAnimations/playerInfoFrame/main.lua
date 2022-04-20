@@ -74,8 +74,8 @@ local ratios = {
     RightTextTopGap1 = 21 / 1080, -- why did this have to be different from Left line 1
     RightTextTopGap2 = 54 / 1080, -- from top to center of line 2
     RightTextTopGap3 = 89 / 1080, -- from top to center of line 3
-    VisualizerLeftGap = 707 / 1920, -- from left side of screen to leftmost bin
-    VisualizerWidth = 693 / 1920,
+    VisualizerLeftGap = 555 / 1920, -- from left side of screen to leftmost bin
+    VisualizerWidth = 800 / 1920,
 
     RatingEdgeToVisualizerBuffer = 32 / 1920,
     RatingSideBuffer = 25 / 1920, -- an area of buffer to the left and right of the player rating text
@@ -485,7 +485,7 @@ t[#t+1] = Def.ActorFrame {
             self:y(actuals.RightTextTopGap1)
             self:halign(0)
             self:zoom(rightTextSize)
-            self:maxwidth((actuals.VisualizerLeftGap - actuals.RightTextLeftGap - actuals.AvatarWidth) / rightTextSize + textzoomBudge)
+            self:maxwidth((actuals.VisualizerLeftGap - actuals.RightTextLeftGap - actuals.AvatarWidth) +150 / rightTextSize + textzoomBudge)
             self:playcommand("Set")
             registerActorToColorConfigElement(self, "main", "PrimaryText")
         end,
@@ -503,7 +503,7 @@ t[#t+1] = Def.ActorFrame {
             self:y(actuals.RightTextTopGap2)
             self:halign(0)
             self:zoom(rightTextSize)
-            self:maxwidth((actuals.VisualizerLeftGap - actuals.RightTextLeftGap - actuals.AvatarWidth) / rightTextSize + textzoomBudge)
+            self:maxwidth((actuals.VisualizerLeftGap - actuals.RightTextLeftGap - actuals.AvatarWidth) + 150 / rightTextSize + textzoomBudge)
             self:playcommand("Set")
             registerActorToColorConfigElement(self, "main", "SecondaryText")
         end,
@@ -536,7 +536,7 @@ t[#t+1] = Def.ActorFrame {
             self:y(actuals.RightTextTopGap3)
             self:halign(0)
             self:zoom(rightTextSize)
-            self:maxwidth((actuals.VisualizerLeftGap - actuals.RightTextLeftGap - actuals.AvatarWidth) / rightTextSize + textzoomBudge)
+            self:maxwidth((actuals.VisualizerLeftGap - actuals.RightTextLeftGap - actuals.AvatarWidth) +150 / rightTextSize + textzoomBudge)
             self:playcommand("Set")
             registerActorToColorConfigElement(self, "main", "SecondaryText")
         end,
@@ -1037,13 +1037,14 @@ t[#t+1] = Def.ActorFrame {
 -- if off at first, cannot toggle at runtime
 -- for fps/compat reasons (this causes random crashes for some people)
 -- but if it is on at first, allow toggling visibility
-if visEnabled then
+if visEnabled and false then
     local intervals = {0, 10, 26, 48, 60, 92, 120, 140, 240, 400, 800, 1600, 2600, 3500, 4000}
     t[#t+1] = audioVisualizer:new {
-        x = actuals.VisualizerLeftGap,
-        y = actuals.Height,
+        x = actuals.AvatarWidth + actuals.RightTextLeftGap + actuals.RatingEdgeToVisualizerBuffer,
+        y = 0,
+        vertical=true,
         width = actuals.VisualizerWidth,
-        maxHeight = actuals.Height / 1.8,
+        maxHeight = actuals.Height / 0.75,
         freqIntervals = audioVisualizer.multiplyIntervals(intervals, 9),
         color = color("1,1,1,1"),
         onBarUpdate = function(self)
@@ -1056,7 +1057,7 @@ if visEnabled then
             local longestWidth = getLargestChildWidth(rt)
             x = x + longestWidth + actuals.RatingEdgeToVisualizerBuffer
             local newVisualizerWidth = actuals.VisualizerWidth + (actuals.VisualizerLeftGap - x)
-            self:x(x)
+            self:x(x+403)
             registerActorToColorConfigElement(self, "main", "Visualizer")
             self:playcommand("ResetWidth", {width = newVisualizerWidth})
         end,
@@ -1067,6 +1068,15 @@ if visEnabled then
         end,
     }
 end
+
+t[#t+1] = sessionStats:new {
+    x = actuals.VisualizerLeftGap,
+    y = 0,
+    width = actuals.VisualizerWidth,
+    height = actuals.Height / 0.75,
+    color = color("1,1,1,1"),
+    graph = true,
+}
 
 -- below this point we load things that only work on specific screens
 -- buttons that arent meant to function on some screens dont need their intended targets loaded

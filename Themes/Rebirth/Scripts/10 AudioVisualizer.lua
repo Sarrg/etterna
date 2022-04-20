@@ -114,6 +114,10 @@ function audioVisualizer:new(params)
         Def.ActorFrame {
         InitCommand = function(self)
             self:xy(params.x or 0, params.y or 0)
+            if params.vertical then
+                self:rotationz(90)
+            end
+            self:rotationy(180)
         end,
         CurrentSongChangedMessageCommand = function(self)
             self:RunCommandsOnChildren(
@@ -168,12 +172,20 @@ function audioVisualizer:new(params)
                         Name = "VisualizerBar_"..i-2,
                         InitCommand = function(self)
                             (frame.bars)[i - 2] = self
+                            --if params.vertical then
+                            --     self:halign(1):y(pos * (i - 2)):diffuse(color):zoomtowidth(width)
+                            --else
                             self:valign(1):x(pos * (i - 2)):diffuse(color):zoomtowidth(width)
+                            --end
                         end,
                         ResetWidthCommand = function(self, given)
                             local width = (given.width - intCount * params.spacing) / (#freqIntervals - 2)
                             local pos = width + params.spacing
+                            --if params.vertical then
+                            --    self:y(pos * (i-2))
+                            --else
                             self:x(pos * (i-2))
+                            --end
                             self:zoomtowidth(width)
                         end
                     }

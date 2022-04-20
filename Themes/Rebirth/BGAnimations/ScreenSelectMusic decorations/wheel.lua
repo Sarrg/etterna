@@ -108,6 +108,38 @@ local graphWidth = actuals.ItemDividerLength - actuals.ItemGradeTextRightGap / 2
 local playsThisSession = SCOREMAN:GetNumScoresThisSession()
 local scoresThisSession = SCOREMAN:GetScoresThisSession()
 local accThisSession = 0
+
+if not rp_isGlobalVar("pbsThisSession") then
+    pbsThisSession = 0
+    meanThisSession = 0
+    sdThisSession = 0
+    arrowsSmashedThisSession = 0
+    --_G["pbsThisSession"] = 0
+    lastScore = nil
+else
+    if playsThisSession > 0 then
+        local rs = SCOREMAN:GetMostRecentScore()
+        if lastScore == nil or lastScore ~= rs then
+            hs = rp_getHighscoreByKey(rs:GetChartKey(), rs:GetMusicRate())
+            if rs == hs then
+                pbsThisSession = pbsThisSession + 1
+            end
+            lastScore = rs
+            stats = rp_calculateStatData(rs)
+            if stats[1] ~= 0 then
+                if arrowsSmashedThisSession ~= 0 then
+                    meanThisSession, arrowsSmashedThisSession = rp_update_mean(meanThisSession, arrowsSmashedThisSession, stats[2], stats[1])
+                    sdThisSession, _ = rp_update_mean(sdThisSession, playsThisSession - 1, stats[3], 1)
+                else
+                    arrowsSmashedThisSession = stats[1]
+                    meanThisSession = stats[2]
+                    sdThisSession = stats[3]
+                end
+            end
+        end
+    end
+end
+
 -- the vertical bounds for the graph
 -- need to keep them respectable ... dont allow below 50 or above 100
 local graphUpperBound = 100
@@ -380,6 +412,39 @@ local t = Def.ActorFrame {
         self:playcommand("ReloadWheel")
     end,
 }
+
+if visEnabled or true then
+    local intervals = {0, 10, 26, 48, 60, 92, 120, 140, 240, 400, 800, 1600, 2600, 3500, 4000}
+    t[#t+1] = audioVisualizer:new {
+        x = 200,
+        y = actuals.HeaderUpperGap-3,
+        vertical=true,
+        width = SCREEN_HEIGHT - actuals.HeaderUpperGap+3,
+        maxHeight = actuals.GeneralBoxLeftGap-actuals.Width-actuals.LeftGap,
+        freqIntervals = audioVisualizer.multiplyIntervals(intervals, 9),
+        color = color("1,1,1,1"),
+        onBarUpdate = function(self)
+            -- hmm
+        end
+    } .. {
+        BeginCommand = function(self)
+            self:x(actuals.GeneralBoxLeftGap)
+            --local rt = self:GetParent():GetChild("RightText")
+            --local x = rt:GetX()
+            --local longestWidth = getLargestChildWidth(rt)
+            --x = x + longestWidth + actuals.RatingEdgeToVisualizerBuffer
+            --local newVisualizerWidth = actuals.VisualizerWidth + (actuals.VisualizerLeftGap - x)
+            --self:x(x+403)
+            --registerActorToColorConfigElement(self, "main", "Visualizer")
+            --self:playcommand("ResetWidth", {width = newVisualizerWidth})
+        end,
+        OptionUpdatedMessageCommand = function(self, params)
+            if params and params.name == "Music Visualizer" then
+                self:visible(params.choiceName == "On")
+            end
+        end,
+    }
+end
 
 
 -- functionally create each item base because they are identical (BG and divider)
@@ -1531,6 +1596,7 @@ t[#t+1] = Def.ActorFrame {
     Def.ActorFrame {
         Name = "MiscPage",
         InitCommand = function(self)
+            --self:y(-50)
             self:diffusealpha(0)
             self:SetUpdateFunction(function(self)
                 if not self:IsInvisible() then
@@ -1654,6 +1720,32 @@ t[#t+1] = Def.ActorFrame {
                 end,
             },
 
+            LoadFont("Common Normal") .. {
+                Name = "Mean",
+                InitCommand = function(self)
+                    self:halign(1)
+                    self:x(actuals.HeaderMTextLeftGap + graphWidth)
+                    self:y(actuals.HeaderHeight / 8 - graphBoundOffset + 5)
+                    self:zoom(graphBoundTextSize)
+                    self:settextf("Mean: %.2fms", notShit.round(meanThisSession, 2))
+                    self:diffusealpha(1)
+                    registerActorToColorConfigElement(self, "main", "SecondaryText")
+                end,
+            },
+
+            LoadFont("Common Normal") .. {
+                Name = "StdDev",
+                InitCommand = function(self)
+                    self:halign(1)
+                    self:x(actuals.HeaderMTextLeftGap + graphWidth)
+                    self:y(actuals.HeaderHeight / 8 * 2 - graphBoundOffset +5)
+                    self:zoom(graphBoundTextSize)
+                    self:settextf("Std: %.2fms", notShit.round(sdThisSession, 2))
+                    self:diffusealpha(1)
+                    registerActorToColorConfigElement(self, "main", "SecondaryText")
+                end,
+            },
+
             Def.ActorMultiVertex {
                 Name = "Line",
                 InitCommand = function(self)
@@ -1678,5 +1770,6 @@ t[#t+1] = Def.ActorFrame {
         }
     }
 }
+
 
 return t
