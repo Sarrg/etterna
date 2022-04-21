@@ -1,8 +1,8 @@
 THEMEINFO = {
-    Name = "Rebirth",
-    Version = "2",
-    Date = "20220313",
-    Author = "Celebelian, poco0317, and the Etterna Team"
+    Name = "Rebirth (Filter Presets Mod)",
+    Version = "2 (0.1)",
+    Date = "20220422",
+    Author = "Celebelian, poco0317, and the Etterna Team (Modded by Sarrg)"
 }
 
 function getThemeName()
