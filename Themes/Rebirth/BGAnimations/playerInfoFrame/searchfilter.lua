@@ -466,17 +466,13 @@ local function lowerSection()
 
     -- names for each filter line
     local filterCategoryTable = {
-        "Overall",
-        "Stream",
-        "Jumpstream",
-        "Handstream",
-        "Stamina",
-        "JackSpeed",
-        "Chordjacks",
-        "Technical",
         "Length",
         "Clear %",
     }
+    local offset = #filterCategoryTable - 1
+    for _, s in ipairs(ms.SkillSets) do
+        table.insert(filterCategoryTable, #filterCategoryTable - offset, s) 
+    end
 
     -- defines the bounds for each filter line
     -- if a bound is at either limit, it is considered infinite in that direction
@@ -609,6 +605,73 @@ local function lowerSection()
             return getSSFilter(10)
         end,
     }
+
+
+    -- TODO PRESETMAN Functions
+    local function UpdatePreset(i)
+        preset = PRESETMAN:GetPreset(i)
+        if preset then
+            for j, f in ipairs(filterCategoryTable) do
+                local fLower, fUpper = filterCategoryGetters[j]()
+                preset[f] = {fLower, fUpper}
+            end
+
+            local mode = FILTERMAN:GetFilterMode() and "AND" or "OR"
+            preset["FilterMode"] = mode 
+            local highestOnly = FILTERMAN:GetHighestSkillsetsOnly() and "ON" or "OFF"
+            preset["HighestSkillsetOnly"] = highestOnly
+            preset["Rate"] = {FILTERMAN:GetMaxFilterRate(), FILTERMAN:GetMinFilterRate()}
+        end
+        PRESETMAN:SavePreset(i, preset)
+    end
+
+    local function LoadPreset(i)
+        preset = PRESETMAN:LoadPreset(i)
+        if preset then
+            for j, f in ipairs(filterCategoryTable) do
+                local fVals = preset[f]
+                local lim = filterCategoryLimits[j]
+                local fLower, fUpper = unpack(lim)
+                if fVals then
+                    fLower, fUpper = unpack(fVals)
+                end
+                local theSetter = filterCategoryFunction[j]
+                theSetter(fLower, fUpper, lim)
+            end
+
+            local rate = preset["Rate"]
+            if rate then
+                local min, max = unpack(rate)
+                --FILTERMAN:SetMaxFilterRate(3.0)
+                --FILTERMAN:SetMinFilterRate(0.1)
+                FILTERMAN:SetMaxFilterRate(max)
+                FILTERMAN:SetMinFilterRate(min)
+            else
+                FILTERMAN:SetMaxFilterRate(1.0)
+                FILTERMAN:SetMinFilterRate(1.0)
+            end
+
+            local mode = preset["FilterMode"]
+            if mode then
+                local txt = FILTERMAN:GetFilterMode() and "AND" or "OR"
+                if mode ~= txt then
+                    FILTERMAN:ToggleFilterMode()
+                end
+            end
+
+            local highestOnly = preset["HighestSkillsetOnly"]
+            if highestOnly then
+                local txt = FILTERMAN:GetHighestSkillsetsOnly() and "ON" or "OFF"
+                if highestOnly ~= txt then
+                    FILTERMAN:ToggleHighestSkillsetsOnly()
+                end
+            end
+        end
+    end
+
+    local function ResetPreset()
+        PRESETMAN:LoadPreset(0)
+    end
 
     local grabbedSlider = nil
 
@@ -930,6 +993,11 @@ local function lowerSection()
     -- use this function to generate a new line for the right column
     -- this column has multiple purposes, so all this function will do is generate the base
     -- the base being: they are all BitmapText on a consistent column with consistent spacing
+    local function getFilterMiscLinePosition(i)
+        local tblAndOne = #filterCategoryTable + 1
+        return (actuals.LowerSectionHeight / tblAndOne) * (i-1) + (actuals.LowerSectionHeight / tblAndOne / 2)
+    end
+
     local function filterMiscLine(i)
         return UIElements.TextToolTip(1, 1, "Common Normal") .. {
             InitCommand = function(self)
@@ -937,7 +1005,7 @@ local function lowerSection()
                 -- y pos: a line on the right column based on i (similar math to the Tab system positioning)
                 local tblAndOne = #filterCategoryTable + 1
                 self:halign(0)
-                self:xy(actuals.RightColumnLeftGap, (actuals.LowerSectionHeight / tblAndOne) * (i-1) + (actuals.LowerSectionHeight / tblAndOne / 2))
+                self:xy(actuals.RightColumnLeftGap, getFilterMiscLinePosition(i))
                 self:maxwidth((actuals.Width - actuals.EdgePadding - actuals.RightColumnLeftGap) / textSize - textZoomFudge)
                 registerActorToColorConfigElement(self, "main", "PrimaryText")
             end
@@ -1085,6 +1153,7 @@ local function lowerSection()
         MouseOutCommand = onUnHover,
         MouseDownCommand = function(self)
             FILTERMAN:ResetAllFilters()
+            ResetPreset()
             self:GetParent():playcommand("UpdateText")
             self:GetParent():playcommand("UpdateDots")
         end
@@ -1104,11 +1173,101 @@ local function lowerSection()
             local w = scr:GetChild("WheelFile")
             if w ~= nil then
                 WHEELDATA:SetSearch(searchentry)
+                UpdatePreset()
                 w:sleep(0.01):queuecommand("ApplyFilter")
             end
             -- but we dont change the input context to keep it from being too jarring
         end
     }
+
+    t[#t+1] = filterMiscLine(9) .. {
+        Name = "PresetText",
+        InitCommand = function(self)
+            self:settext("Preset:")
+        end
+    }
+
+    t[#t+1] = UIElements.SpriteButton(1, 1, THEME:GetPathG("", "_triangle")) .. {
+        Name = "PresetDec",
+        InitCommand = function(self)            
+            local hypotenuse = math.sqrt(2 * (actuals.SliderThickness ^ 2)) / 2
+            self:zoomto(hypotenuse*1.5, hypotenuse)
+            self:xy(actuals.RightColumnLeftGap + 75, getFilterMiscLinePosition(9))
+            self:rotationz(-90)
+            registerActorToColorConfigElement(self, "main", "PrimaryText")
+        end,
+        MouseDownCommand = function(self)
+            local i = PRESETMAN.selectedPreset
+            LoadPreset(i-1)
+            self:GetParent():playcommand("UpdateText")
+            self:GetParent():playcommand("UpdateDots")
+        end,
+    }
+    
+    t[#t+1] = UIElements.TextToolTip(1, 1, "Common Normal")  .. {
+        Name = "PresetName",
+        InitCommand = function(self)
+            self:xy(actuals.RightColumnLeftGap + 125, getFilterMiscLinePosition(9))
+            self:maxwidth(100 / textSize - textZoomFudge)
+        end,
+        UpdateTextCommand = function(self)
+            local presetName = "Custom"
+            local preset = PRESETMAN:GetPreset()
+            if preset then
+                presetName = preset["Name"]
+            end
+            self:settextf("%s", presetName)
+        end
+    }
+
+    t[#t+1] = UIElements.SpriteButton(1, 1, THEME:GetPathG("", "_triangle")) .. {
+        Name = "PresetInc",
+        InitCommand = function(self)
+            local hypotenuse = math.sqrt(2 * (actuals.SliderThickness ^ 2)) / 2
+            self:zoomto(hypotenuse*1.5, hypotenuse)
+            self:xy(actuals.RightColumnLeftGap + 175, getFilterMiscLinePosition(9))
+            self:rotationz(90)
+            registerActorToColorConfigElement(self, "main", "PrimaryText")
+        end,
+        MouseDownCommand = function(self)
+            local i = PRESETMAN.selectedPreset
+            LoadPreset(i+1)
+            self:GetParent():playcommand("UpdateText")
+            self:GetParent():playcommand("UpdateDots")
+        end,
+    }
+
+    for i=1,9 do
+        t[#t+1] = UIElements.TextToolTip(1, 1, "Common Normal") .. {
+            Name = "Preset"..(i),
+            InitCommand = function(self)
+                local tblAndOne = #filterCategoryTable + 1
+                local j = math.floor((i-1) / 3)
+                self:xy(actuals.EdgePadding + 50 + (25 * (i-1)), (actuals.LowerSectionHeight / tblAndOne) * (10) + (actuals.LowerSectionHeight / tblAndOne / 2))                
+                local hypotenuse = math.sqrt(2 * (actuals.SliderThickness ^ 2)) / 2
+                --self:zoomto(hypotenuse*3, hypotenuse*3)
+                --self:maxwidth((actuals.Width - actuals.EdgePadding - actuals.RightColumnLeftGap) / textSize - textZoomFudge)
+                self:diffusealpha(0.6)
+                registerActorToColorConfigElement(self, "main", "PrimaryText")
+                self:GetParent():playcommand("UpdateDots")
+                self:GetParent():playcommand("UpdateText")
+                --local txt = self:GetChild("Text")
+                self:settext(""..i)
+            end,
+            UpdateDotsCommand = function(self)
+                if i == PRESETMAN.selectedPreset then
+                    self:diffusealpha(1.0)
+                else
+                    self:diffusealpha(0.6)
+                end
+            end,
+            MouseDownCommand = function(self)
+                LoadPreset(i)
+                self:GetParent():playcommand("UpdateText")
+                self:GetParent():playcommand("UpdateDots")
+            end
+        }
+    end
 
     return t
 end
