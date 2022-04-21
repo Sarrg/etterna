@@ -620,7 +620,7 @@ local function lowerSection()
             preset["FilterMode"] = mode 
             local highestOnly = FILTERMAN:GetHighestSkillsetsOnly() and "ON" or "OFF"
             preset["HighestSkillsetOnly"] = highestOnly
-            preset["Rate"] = {FILTERMAN:GetMaxFilterRate(), FILTERMAN:GetMinFilterRate()}
+            preset["Rate"] = {FILTERMAN:GetMinFilterRate(), FILTERMAN:GetMaxFilterRate()}
         end
         PRESETMAN:SavePreset(i, preset)
     end
