@@ -237,8 +237,9 @@ local function stepsRows(i)
                 self:zoom(textSize)
                 registerActorToColorConfigElement(self, "main", "SecondaryText")
             end,
-            SetStepsRowsCommand = function(self)
-                local meter = steps:GetMeter()
+            SetStepsRowsCommand = function(self)   
+                local currentrate = GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate()
+                local meter = tostring(math.floor(steps:GetMSD(currentrate, 1)))
                 local diff = getShortDifficulty(steps:GetDifficulty())
                 self:settextf("%s %s", diff, meter)
             end
