@@ -371,6 +371,18 @@ function getRandomQuote(tipType)
         else
             return "ERROR: No quotes"
         end
+    elseif tipType == 3 then
+        local len = #Phrases + #Tips
+        if len > 0 then
+            local rnd = math.random(len)
+            if rnd < #Tips then
+                return Phrases[rnd - #Tips]
+            else                
+                return "TIP: "..Tips[rnd]
+            end
+        else
+            return "ERROR: No Wisdom available"
+        end
     else
         return "ERROR: bruh how did u break this ??????"
     end

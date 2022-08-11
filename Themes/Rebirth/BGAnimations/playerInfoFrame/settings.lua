@@ -3121,6 +3121,34 @@ local function rightFrame()
             end
         end
     end
+
+    local function rp_optionDataRangeDirectionsFUNC(optionDataPropertyName, minValue, maxValue)
+        return {
+            Left = function()
+                val = optionData[optionDataPropertyName].get()
+                if val == minValue then
+                    optionData[optionDataPropertyName].set(maxValue)
+                else
+                    optionData[optionDataPropertyName].set(val-1)
+                end
+            end,
+            Right = function()
+                val = optionData[optionDataPropertyName].get()
+                if val == maxValue then
+                    optionData[optionDataPropertyName].set(minValue)
+                else
+                    optionData[optionDataPropertyName].set(val+1)
+                end
+            end,
+        }
+    end
+    local function optionDataToggleIndexGetterFUNC(optionDataPropertyName, oneValue)
+        -- oneValue is what we expect for choice index 1 (the first one)
+        return function()
+            return optionData[optionDataPropertyName].get()
+        end
+    end
+
     local function customizeGameplayButton()
         return {
             Name = "Customize Playfield",
@@ -5255,8 +5283,8 @@ local function rightFrame()
                 Name = "Tip Type",
                 Type = "SingleChoice",
                 Explanation = "Change the quips shown at the bottom of the evaluation screen.",
-                Choices = choiceSkeleton("Tips", "Quotes"),
-                Directions = optionDataToggleDirectionsFUNC("tipType", 1, 2),
+                Choices = choiceSkeleton("Tips", "Quotes", "Tips and Quotes"),
+                Directions = rp_optionDataRangeDirectionsFUNC("tipType", 1, 3),
                 ChoiceIndexGetter = optionDataToggleIndexGetterFUNC("tipType", 1),
             },
             {
