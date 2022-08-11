@@ -812,6 +812,8 @@ end
 
 -- weird util functions insert here TODO: into utils it should go
 local function AlphanumSort(a, b)
+    a = string.lower(a)
+    b = string.lower(b)
     local function padnum(d)
         local dec, n = string.match(d, "(%.?)0*(.+)")
         return #dec > 0 and ("%.12f"):format(d) or ("%s%03d%s"):format(dec, #n, n)
