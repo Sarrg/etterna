@@ -155,6 +155,10 @@ class Replay
 	void SetSongOffset(float f) { fSongOffset = f; }
 	auto GetGlobalOffset() const -> float { return fGlobalOffset; }
 	void SetGlobalOffset(float f) { fGlobalOffset = f; }
+	auto GetRngSeed() const -> int { return rngSeed; }
+	void SetRngSeed(int seed) { rngSeed = seed; }
+	auto GetModifiers() const -> std::string { return mods; }
+	void SetModifiers(std::string& modstr) { mods = modstr; }
 
 	ReplayType GetReplayType() const
 	{
@@ -277,7 +281,7 @@ class Replay
 	float fSongOffset = 0.F;
 	float fGlobalOffset = 0.F;
 	std::string mods{};
-	unsigned int rngSeed = 0u;
+	int rngSeed = 0;
 
 	std::vector<InputDataEvent> InputData;
 	std::vector<float> vOffsetVector;
