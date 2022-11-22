@@ -234,6 +234,8 @@ t[#t+1] = LoadActorWithParams("../../chordDensityGraph.lua", {sizing = {
     end
 }
 
+t[#t + 1]  = LoadActor("../../calcdisplay.lua")
+
 t[#t+1] = UIElements.QuadButton(1, 1) .. {
     Name = "ChoicesCover",
     InitCommand = function(self)

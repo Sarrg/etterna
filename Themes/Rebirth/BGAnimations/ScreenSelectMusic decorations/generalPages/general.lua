@@ -582,6 +582,69 @@ t[#t+1] = UIElements.SpriteButton(1, 1, nil) .. {
 }
 
 t[#t+1] = createStatLines()
+
+-- to toggle calc info display stuff
+local infoOnScreen = false
+local function toggleCalcInfo()
+	infoOnScreen = not infoOnScreen
+
+	if infoOnScreen then
+		MESSAGEMAN:Broadcast("CalcInfoOn")
+	else
+		MESSAGEMAN:Broadcast("CalcInfoOff")
+	end
+end
+
+local tt = Def.ActorFrame {
+    Name = "ToggleCalc",
+    InitCommand = function(self)
+    end
+}
+t[#t+1] = UIElements.TextButton(1, 1, "Common Normal") .. {
+    Name = "ToggleCalc_Btn",
+    InitCommand = function(self)
+        local txt = self:GetChild("Text")
+        local bg = self:GetChild("BG")
+        txt:halign(1):valign(0)
+        bg:halign(1):valign(0)
+        txt:settextf("Calc Info")
+        self:x(115)
+        self:y(10)
+        txt:zoomto(txt:GetZoomedWidth() * 0.75, txt:GetZoomedHeight() * 0.75)
+        bg:zoomto(txt:GetZoomedWidth(), txt:GetZoomedHeight())
+        registerActorToColorConfigElement(txt, "main", "PrimaryText")
+        self:diffusealpha(0)
+    end,
+    
+    ToggleChartPreviewCommand = function(self, params)
+        if params ~= nil and params.active ~= nil then
+            SCUFF.preview.active = params.active
+        end
+
+        if SCUFF.preview.active then
+            self:diffusealpha(1)
+        else
+            -- chart preview turning off
+            self:diffusealpha(0)
+        end
+    end,
+    ClickCommand = function(self, params)
+        if params.update == "OnMouseDown" then
+            if params.event == "DeviceButton_left mouse button" then
+                toggleCalcInfo()
+            end
+        end
+    end,
+    RolloverUpdateCommand = function(self, params)
+        if params.update == "in" then
+            self:diffusealpha(0.5)
+        else
+            self:diffusealpha(1)
+        end
+    end,
+}
+
+-- t[#t+1] = tt
 t[#t+1] = createTopSkillsetLines()
 t[#t+1] = createMSDLines()
 t[#t+1] = createTagDisplays()
