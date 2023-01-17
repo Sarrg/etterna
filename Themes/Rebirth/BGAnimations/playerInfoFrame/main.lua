@@ -196,7 +196,7 @@ local profile = GetPlayerOrMachineProfile(PLAYER_1)
 local pcount = SCOREMAN:GetTotalNumberOfScores()
 local parrows = profile:GetTotalTapsAndHolds()
 local strparrows = shortenIfOver1Mil(parrows)
-local ptime = profile:GetTotalSessionSeconds()
+local ptime = profile:GetTotalGameplaySeconds()
 local username = ""
 local redir = false -- tell whether or not redirected input is on for the login prompt stuff
 
